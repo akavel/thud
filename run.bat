@@ -1,0 +1,2 @@
+@luajit main.lua
+@pause
