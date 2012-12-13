@@ -8,48 +8,62 @@ if not thud then
 	return
 end
 
-local screen = {w=80, h=25}
+local function NewGrid(w, h, default)
+	return {
+		w = w,
+		h = h,
+		default = default,
+		set = function(self, x, y, value)
+			self.rows = self.rows or {}
+			self.rows[y] = self.rows[y] or {}
+			self.rows[y][x] = value
+		end,
+		get = function(self, x, y)
+			return self.rows and self.rows[y] and self.rows[y][x] or self.default
+		end,
+	}
+end
+
+local screen = {
+	w = 80,
+	h = 25,
+}
 function screen:set(x, y, char)
 	if x==self.w and y==self.h then
-		return
-		-- error('setting bottom-right corner not allowed because of overflow')
+		return -- error('setting bottom-right corner not allowed because of overflow')
 	end
-	local rows = self.rows or {}
-	self.rows = rows
-
-	local row = rows[y] or {}
-	rows[y] = row
-
-	row[x] = char:sub(1, 1)
-end
-function screen:clear()
-	self.rows = {}
+	self.dirty:set(x, y, char:sub(1, 1))
 end
 function screen:get(x, y)
-	if not self.rows then
-		return ' '
-	end
-	local row = self.rows[y]
-	if not row then
-		return ' '
-	end
-	return row[x] or ' '
+	return self.dirty:get(x, y) or self.bg:get(x, y) or ' '
 end
 function screen:flush()
-	for y=1,self.h-1 do
-		thud.gotoxy(1, y)
+	for y=1,self.h do
 		for x=1,self.w do
-			io.write(self:get(x, y))
+			local c = self.dirty:get(x, y)
+			if c~=nil and (x~=self.w or y~=self.h) then
+				thud.gotoxy(x, y)
+				io.write(c)
+				self.bg:set(x, y, c)
+			end
+			self.dirty:set(x, y, nil)
 		end
 	end
-	thud.gotoxy(1, self.h)
-	for x=1,self.w-1 do
-		io.write(self:get(x, self.h))
+end
+function screen:clear()
+	self.bg = NewGrid(self.w, self.h)
+	self.dirty = NewGrid(self.w, self.h)
+	for y=1,self.h-1 do
+		thud.gotoxy(1, y)
+		io.write((' '):rep(self.w))
 	end
+	thud.gotoxy(1, self.h)
+	io.write((' '):rep(self.w-1))
 end
 
 function main()
 	local player = {x=10, y=10}
+	screen:clear()
 	for x=5,15 do
 		for y=5,15 do
 			screen:set(x, y, '.')
@@ -67,8 +81,9 @@ function main()
 			thud.gotoxy(1, 1)
 			io.write('Quit without saving? [yN] ')
 			if thud.waitforkey().char=='y' then
-				thud.gotoxy(1, screen.h)
-				print('\nBye.')
+				screen:clear()
+				thud.gotoxy(1, 1)
+				print('Bye.')
 				return
 			end
 		end
