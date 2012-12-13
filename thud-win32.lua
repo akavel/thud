@@ -1,3 +1,27 @@
+--[[
+thud - extremely primitive console library for roguelike games.
+
+## MIT License
+Copyright (c) 2012  Mateusz Czapliński <czapkofan@gmail.com>
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+]]
+
 local ffi = require 'ffi'
 local C = ffi.C
 local bit = require 'bit'
@@ -5,8 +29,6 @@ local bit = require 'bit'
 if ffi.os ~= 'Windows' then
 	return
 end
-
-local crt = {}
 
 -- http://svn.freepascal.org/cgi-bin/viewvc.cgi/trunk/rtl/win/crt.pp?revision=21738&view=markup
 
@@ -47,8 +69,8 @@ local STD_OUTPUT_HANDLE = ffi.new('DWORD', -11)
 local cout = C.GetStdHandle(STD_OUTPUT_HANDLE)
 local cin = C.GetStdHandle(STD_INPUT_HANDLE)
 
-function crt.gotoxy(x, y)
-	ffi.C.SetConsoleCursorPosition(cout, ffi.new('COORD', x, y))
+local function gotoxy(x, y)
+	C.SetConsoleCursorPosition(cout, ffi.new('COORD', x, y))
 end
 
 
@@ -233,52 +255,39 @@ local vk_special = {
 	[vk.SCROLL] = true,
 }
 
-local LEFT_ALT_PRESSED = 0x2
-local RIGHT_ALT_PRESSED = 0x1
-local ENHANCED_KEY = 0x0100
-local LEFT_CTRL_PRESSED = 0x0008 
-local RIGHT_CTRL_PRESSED = 0x0004 
-local SHIFT_PRESSED = 0x0010 
+local RIGHT_ALT_PRESSED = 0x01
+local LEFT_ALT_PRESSED = 0x02
+local RIGHT_CTRL_PRESSED = 0x04 
+local LEFT_CTRL_PRESSED = 0x08 
+local SHIFT_PRESSED = 0x10 
 
-local function remap(scancode, controls, keycode)
-	return scancode, {
+local function waitforkey()
+	local inputrec = ffi.new 'INPUT_RECORD'
+	local ret = C.ReadConsoleInputA(cin, inputrec, 1, ffi.new('DWORD[1]'))
+	if ret == 0 then
+		error('Windows Error #'..C.GetLastError())
+	end
+	if inputrec.EventType ~= 1 then
+		return waitforkey()
+	end
+
+	local evt = inputrec.Event.KeyEvent
+	if evt.bKeyDown==0 or vk_special[evt.wVirtualKeyCode] then
+		return waitforkey()
+	end
+
+	local char = evt.uChar.AsciiChar
+	local controls = evt.dwControlKeyState
+	return {
+		code = vk_reverse[evt.wVirtualKeyCode],
+		char = char~=0 and string.char(char) or nil,
 		alt = bit.band(controls, RIGHT_ALT_PRESSED+LEFT_ALT_PRESSED)>0, 
 		ctrl = bit.band(controls, RIGHT_CTRL_PRESSED+LEFT_CTRL_PRESSED)>0,
 		shift = bit.band(controls, SHIFT_PRESSED)>0,
 	}
 end
 
-function crt.readkey()
-	local inputrec = ffi.new 'INPUT_RECORD'
-	local ret = ffi.C.ReadConsoleInputA(cin, inputrec, 1, ffi.new('DWORD[1]'))
-	if ret==0 then
-		error('Windows Error #'..ffi.C.GetLastError())
-	end
-	if inputrec.EventType ~= 1 then
-		return crt.readkey()
-	end
-
-	local evt = inputrec.Event.KeyEvent
-	if evt.bKeyDown == 0 then
-		return crt.readkey()
-	end
-
-	local alt = bit.band(evt.dwControlKeyState, LEFT_ALT_PRESSED+RIGHT_ALT_PRESSED) > 0
-	if vk_special[evt.wVirtualKeyCode] then
-		return crt.readkey()
-	end
-
-	local key = vk_reverse[evt.wVirtualKeyCode]
-	if evt.uChar.AsciiChar==0 or bit.band(evt.dwControlKeyState, LEFT_ALT_PRESSED+ENHANCED_KEY) > 0 then
-		--return 0, remap(evt.wVirtualScanCode, evt.dwControlKeyState, evt.wVirtualKeyCode)
-		return 0, remap(key, evt.dwControlKeyState)
-	end
-	-- "shift tab" ?
-	-- FIXME: return normal, regular value?
-	if evt.uChar.AsciiChar==9 and bit.band(evt.dwControlKeyState, SHIFT_PRESSED)>0 then
-		return 0, 15
-	end
-	return string.char(evt.uChar.AsciiChar), key
-end
-
-return crt
+return {
+	waitforkey = waitforkey,
+	gotoxy = gotoxy,
+}
