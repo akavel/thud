@@ -1,2 +1,2 @@
-@luajit main.lua
+@luajit example.lua
 @pause
