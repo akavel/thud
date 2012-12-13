@@ -14,4 +14,6 @@ end
 
 crt.gotoxy(5, 3)
 print('hello')
-
+for i=1,5 do
+	print(i, crt.readkey())
+end
