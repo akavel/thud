@@ -257,9 +257,9 @@ local vk_special = {
 
 local RIGHT_ALT_PRESSED = 0x01
 local LEFT_ALT_PRESSED = 0x02
-local RIGHT_CTRL_PRESSED = 0x04 
-local LEFT_CTRL_PRESSED = 0x08 
-local SHIFT_PRESSED = 0x10 
+local RIGHT_CTRL_PRESSED = 0x04
+local LEFT_CTRL_PRESSED = 0x08
+local SHIFT_PRESSED = 0x10
 
 local function waitforkey()
 	local inputrec = ffi.new 'INPUT_RECORD'
@@ -281,7 +281,7 @@ local function waitforkey()
 	return {
 		code = vk_reverse[evt.wVirtualKeyCode],
 		char = char~=0 and string.char(char) or nil,
-		alt = bit.band(controls, RIGHT_ALT_PRESSED+LEFT_ALT_PRESSED)>0, 
+		alt = bit.band(controls, RIGHT_ALT_PRESSED+LEFT_ALT_PRESSED)>0,
 		ctrl = bit.band(controls, RIGHT_CTRL_PRESSED+LEFT_CTRL_PRESSED)>0,
 		shift = bit.band(controls, SHIFT_PRESSED)>0,
 	}
