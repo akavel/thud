@@ -1,2 +1,1 @@
-@luajit example.lua
-@pause
+@luajit qgame.lua
