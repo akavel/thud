@@ -70,6 +70,8 @@ local cout = C.GetStdHandle(STD_OUTPUT_HANDLE)
 local cin = C.GetStdHandle(STD_INPUT_HANDLE)
 
 local function gotoxy(x, y)
+	x = x>0 and x-1 or x
+	y = y>0 and y-1 or y
 	C.SetConsoleCursorPosition(cout, ffi.new('COORD', x, y))
 end
 

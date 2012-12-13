@@ -12,8 +12,12 @@ if not thud then
 	return
 end
 
-thud.gotoxy(5, 3)
-print('hello')
+thud.gotoxy(1, 1)
+io.write(('....\n'):rep(4))
+thud.gotoxy(3, 3)
+io.write('@')
+
+thud.gotoxy(1, 5)
 for i=1,5 do
 	io.write(i..'\t')
 	for k,v in pairs(thud.waitforkey()) do
